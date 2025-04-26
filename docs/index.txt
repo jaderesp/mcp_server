@@ -1,0 +1,24 @@
+===reuniao eduardo 26-04-2025===
+
+- n8n = bot i.a.
+
+- eu: gerar arquivo de instruções ia com formulario
+
+- eduardo: vai gerar fluxo de bot no n8n
+
+- eu: gerar credenciais de testes para usar api do instagram (direct)
+
+
+ler mais sobre mcp server: https://www.youtube.com/watch?v=ZqlpCliftQg&t=823s
+ regras integração com instagram:
+
+ Não permitido...
+• Não pode enviar mensagens diretas automáticas quando alguém te segue
+• Não pode enviar mensagens diretas automáticas quando alguém curte suas publicações / reels
+• Não pode enviar mensagens diretas frias usando automação
+
+Permitido...
+• Pode enviar mensagens diretas automáticas para mensagens recebidas
+• Pode enviar mensagens diretas automáticas quando alguém responde aos seus stories
+• Pode enviar mensagens diretas automáticas para comentários em publicações / reels / lives no Instagram
+• Pode enviar mensagens diretas automáticas para menções em stories
