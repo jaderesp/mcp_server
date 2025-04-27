@@ -6,6 +6,8 @@ const port = 3000;
 
 app.use(express.json());
 
+Pedido.sync();
+
 // Criar Pedido
 app.post("/pedido", async (req: Request, res: Response) => {
   try {
@@ -44,8 +46,12 @@ app.get("/pedido/:id", async (req: Request, res: Response) => {
 
 // Atualizar Pedido
 app.put("/pedido/:id", async (req: Request, res: Response) => {
+
+  let id_: any = req?.params?.id
+
   try {
-    const pedido = await Pedido.findByPk(req.params.id);
+
+    const pedido = await Pedido.findByPk(id_);
     if (!pedido) {
       return res.status(404).json({ error: "Pedido não encontrado." });
     }
@@ -59,8 +65,11 @@ app.put("/pedido/:id", async (req: Request, res: Response) => {
 
 // Deletar Pedido
 app.delete("/pedido/:id", async (req: Request, res: Response) => {
+
+  let id_: any = req?.params?.id
+
   try {
-    const pedido = await Pedido.findByPk(req.params.id);
+    const pedido = await Pedido.findByPk(id_);
     if (!pedido) {
       return res.status(404).json({ error: "Pedido não encontrado." });
     }
@@ -72,3 +81,4 @@ app.delete("/pedido/:id", async (req: Request, res: Response) => {
   }
 });
 
+export default app;

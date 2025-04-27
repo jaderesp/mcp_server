@@ -1,18 +1,42 @@
-import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js"; // continua usando Stdio
+// src/server.ts
+import express, { Request, Response } from "express";
+import { createServer } from "http";
+import { WebSocketServer } from "ws";
+import chalk from "chalk";
 import { z } from "zod";
 import axios from "axios";
-import chalk from "chalk";
-import express from "express"; // novo import
-import { Request, Response } from "express"; // faltava isso!
 
-const server = new McpServer({
+import { McpServer, ResourceTemplate } from "@modelcontextprotocol/sdk/server/mcp.js";
+import { WebSocketServerTransport } from "./mcp/WebSocketServerTransport";
+
+
+import pedidosRouter from "./routes/Pedidos"; // Agora é um router Express separado!
+import { Socket } from "dgram";
+
+// ------------------------------------------------
+// Criar o app Express normalmente
+// ------------------------------------------------
+const app = express();
+app.use(express.json());
+
+// Usar suas rotas de pedidos (CRUD)
+app.use("/api/pedidos", pedidosRouter);
+
+// ------------------------------------------------
+// Criar HTTP Server para usar com WebSocket
+// ------------------------------------------------
+const httpServer = createServer(app);
+
+// ------------------------------------------------
+// MCP Server
+// ------------------------------------------------
+const mcpServer = new McpServer({
     name: "MeuServidorCustom",
     version: "0.1.0"
 });
 
 // Tool para somar números
-server.tool("add", { a: z.number(), b: z.number() }, async ({ a, b }) => {
+mcpServer.tool("add", { a: z.number(), b: z.number() }, async ({ a, b }) => {
     console.log(chalk.cyan(`📩 Tool chamada: "add" com a=${a}, b=${b}`));
     const resultado = a + b;
     console.log(chalk.green(`📤 Resultado: ${resultado}`));
@@ -22,7 +46,7 @@ server.tool("add", { a: z.number(), b: z.number() }, async ({ a, b }) => {
 });
 
 // Tool que chama API externa
-server.tool("buscarUsuario", { userId: z.string() }, async ({ userId }) => {
+mcpServer.tool("buscarUsuario", { userId: z.string() }, async ({ userId }) => {
     console.log(chalk.cyan(`📩 Tool chamada: "buscarUsuario" com userId=${userId}`));
     try {
         const response = await axios.get(`https://jsonplaceholder.typicode.com/users/${userId}`);
@@ -40,36 +64,50 @@ server.tool("buscarUsuario", { userId: z.string() }, async ({ userId }) => {
 });
 
 // Resource de saudação
-server.resource("greeting", new ResourceTemplate("greeting://{name}", { list: undefined }), async (uri, { name }) => {
-    console.log(chalk.yellow(`📩 Resource acessado: "greeting" para nome=${name}`));
-    const mensagem = `Olá, ${name}! Seja bem-vindo(a)!`;
-    console.log(chalk.green(`📤 Saudação gerada: ${mensagem}`));
-    return {
-        contents: [{
-            uri: uri.href,
-            text: mensagem
-        }]
-    };
+mcpServer.resource(
+    "greeting",
+    new ResourceTemplate("greeting://{name}", { list: undefined }),
+    async (uri, { name }) => {
+        console.log(chalk.yellow(`📩 Resource acessado: "greeting" para nome=${name}`));
+        const mensagem = `Olá, ${name}! Seja bem-vindo(a)!`;
+        console.log(chalk.green(`📤 Saudação gerada: ${mensagem}`));
+        return {
+            contents: [{
+                uri: uri.href,
+                text: mensagem
+            }]
+        };
+    }
+);
+
+// ------------------------------------------------
+// WebSocket Server para MCP (em /ws)
+// ------------------------------------------------
+const wss = new WebSocketServer({
+    server: httpServer,
+    path: "/ws"
 });
 
-(async () => {
-    console.log(chalk.blue("\n🔵 Iniciando servidor MCP..."));
+wss.on("connection", (socket: WebSocket) => {
+    console.log(chalk.blue("🔵 Nova conexão WebSocket MCP recebida."));
+    const transport: any = new WebSocketServerTransport(socket);
+    mcpServer.connect(transport);
+});
 
-    const transport = new StdioServerTransport();
-    await server.connect(transport);
+// ------------------------------------------------
+// Rota principal só para teste
+// ------------------------------------------------
+app.get("/", (req: Request, res: Response) => {
+    console.log(chalk.magenta("🌐 Requisição recebida na rota '/'"));
+    res.send("Servidor HTTP rodando. Use WebSocket para acessar MCP.");
+});
 
-    console.log(chalk.green("🟢 Servidor MCP iniciado (usando Stdio)."));
+// ------------------------------------------------
+// Start do servidor
+// ------------------------------------------------
+const PORT = 3000;
 
-    // Criar um servidor HTTP Express só para exibir status
-    const app = express();
-    const port = 3000;
-
-    app.get("/", (req: Request, res: Response) => {
-        console.log(chalk.magenta("🌐 Requisição recebida na rota '/' (status HTTP server)"));
-        res.send("Servidor MCP está rodando via Stdio! 🚀");
-    });
-
-    app.listen(port, () => {
-        console.log(chalk.green(`🟢 Servidor HTTP rodando em: http://localhost:${port}`));
-    });
-})();
+httpServer.listen(PORT, () => {
+    console.log(chalk.green(`🟢 HTTP Server ouvindo em http://localhost:${PORT}`));
+    console.log(chalk.green(`🔵 WebSocket MCP Server ouvindo em ws://localhost:${PORT}/ws`));
+});
